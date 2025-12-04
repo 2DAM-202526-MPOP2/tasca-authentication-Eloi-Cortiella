@@ -1,6 +1,7 @@
 import 'package:first_flutter/data/models/sentence.dart';
 import 'package:first_flutter/data/repositories/sentence_repository.dart';
 import 'package:first_flutter/data/services/sentence_service.dart';
+import 'package:first_flutter/presentation/viewmodels/login_vm.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -60,6 +61,9 @@ class _MyHomePageState extends State<MyHomePage> {
       case 1:
         page = FavoritesPage();
         break;
+      case 2:
+        page = LoginPage();
+        break;
       default:
         throw UnimplementedError('no widget for $selectedIndex');
     }
@@ -71,10 +75,16 @@ class _MyHomePageState extends State<MyHomePage> {
             body: Row(children: [MainArea(page: page)]),
             bottomNavigationBar: NavigationBar(
               destinations: [
-                NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+                NavigationDestination(
+                  icon: Icon(Icons.home), 
+                  label: 'Home'),
                 NavigationDestination(
                   icon: Icon(Icons.favorite),
                   label: 'Favorites',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.login),
+                  label: 'Login',
                 ),
               ],
               selectedIndex: selectedIndex,
@@ -100,6 +110,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       NavigationRailDestination(
                         icon: Icon(Icons.favorite),
                         label: Text('Favorites'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.login),
+                        label: Text('Login'),
                       ),
                     ],
                     selectedIndex: selectedIndex,
@@ -233,6 +247,77 @@ class FavoritesPage extends StatelessWidget {
             title: Text(word.text),
           ),
       ],
+    );
+  }
+}
+
+class LoginPage extends StatelessWidget {
+
+  final TextEditingController _controller = TextEditingController();
+  final ValueNotifier<String?> _created = ValueNotifier<String?>(null);
+
+  @override
+  Widget build(BuildContext context) {
+    var vm = context.watch<LoginVM>();
+
+    vm.currentUser;
+    final maxWidth = MediaQuery.of(context).size.width;
+    final contentWidth = maxWidth > 800 ? 600.0 : maxWidth * 0.8;
+
+    return Center(
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: contentWidth),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Enter username',
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                ),
+              ),
+              TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Enter password',
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  vm.validateLogin(_controller.text, _controller.text);
+                },
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: Text('Login'),
+              ),
+              SizedBox(height: 16),
+              ValueListenableBuilder<String?>(
+                valueListenable: _created,
+                builder: (context, value, child) {
+                  if (value == null || value.isEmpty) return SizedBox.shrink();
+                  return Text(
+                    'You are logged in as: $value',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
