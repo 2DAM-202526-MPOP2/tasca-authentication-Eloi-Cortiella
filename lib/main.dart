@@ -1,5 +1,7 @@
 import 'package:first_flutter/data/models/sentence.dart';
+import 'package:first_flutter/data/repositories/authentication_repository.dart';
 import 'package:first_flutter/data/repositories/sentence_repository.dart';
+import 'package:first_flutter/data/services/authentication_service.dart';
 import 'package:first_flutter/data/services/sentence_service.dart';
 import 'package:first_flutter/presentation/viewmodels/login_vm.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,14 @@ void main() {
             sentenceService: context.read(),
           ), //ISentenceRepository instance
         ),
+        Provider<IAuthenticationService>(
+          create: (context) => AuthenticationService(), // IAuthenticationService instance
+        ),
+        Provider<IAuthenticationRepository>(
+          create: (context) => AuthenticationRepository(
+            authenticationService: context.read(),
+          ), //ISentenceRepository instance
+        ),
       ],
       child: const MyApp(),
     ),
@@ -30,8 +40,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => SentenceVM(sentenceRepository: context.read()),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) =>
+              SentenceVM(sentenceRepository: context.read()),
+        ),
+        ChangeNotifierProvider(
+          create: (context) =>
+              LoginVM(
+                authenticationRepository:
+                    context.read<IAuthenticationRepository>(),
+              ),
+        ),
+      ],
       child: MaterialApp(
         title: 'Namer App',
         theme: ThemeData(
@@ -57,13 +79,10 @@ class _MyHomePageState extends State<MyHomePage> {
     switch (selectedIndex) {
       case 0:
         page = GeneratorPage();
-        break;
       case 1:
         page = FavoritesPage();
-        break;
       case 2:
         page = LoginPage();
-        break;
       default:
         throw UnimplementedError('no widget for $selectedIndex');
     }
@@ -252,15 +271,16 @@ class FavoritesPage extends StatelessWidget {
 }
 
 class LoginPage extends StatelessWidget {
+  LoginPage({super.key});
 
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _userController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   final ValueNotifier<String?> _created = ValueNotifier<String?>(null);
 
   @override
   Widget build(BuildContext context) {
-    var vm = context.watch<LoginVM>();
+    final vm = context.watch<LoginVM>();
 
-    vm.currentUser;
     final maxWidth = MediaQuery.of(context).size.width;
     final contentWidth = maxWidth > 800 ? 600.0 : maxWidth * 0.8;
 
@@ -272,41 +292,55 @@ class LoginPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: _controller,
+                controller: _userController,
                 decoration: InputDecoration(
                   hintText: 'Enter username',
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                    borderSide:
+                        BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
               ),
               TextField(
-                controller: _controller,
+                controller: _passwordController,
+                obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Enter password',
                   enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                    borderSide:
+                        BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {
-                  vm.validateLogin(_controller.text, _controller.text);
+                onPressed: () async {
+                  try {
+                    final user = await vm.validateLogin(
+                      _userController.text,
+                      _passwordController.text,
+                    );
+                    _created.value = user.username;
+                  } catch (e) {
+                    _created.value = 'Login failed';
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
-                child: Text('Login'),
+                child: const Text('Login'),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               ValueListenableBuilder<String?>(
                 valueListenable: _created,
                 builder: (context, value, child) {
-                  if (value == null || value.isEmpty) return SizedBox.shrink();
+                  if (value == null || value.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
                   return Text(
                     'You are logged in as: $value',
                     style: Theme.of(context).textTheme.bodyMedium,

@@ -13,7 +13,6 @@ class SentenceVM extends ChangeNotifier {
   // Internal State
   late Sentence _current;
 
-
   SentenceVM({
     required ISentenceRepository sentenceRepository,
   }) : _sentenceRepository = sentenceRepository {
@@ -26,7 +25,6 @@ class SentenceVM extends ChangeNotifier {
     isLoading = false;
     notifyListeners();
   }
-
   
 
   // Getters

@@ -9,18 +9,27 @@ abstract class IAuthenticationRepository {
 class AuthenticationRepository implements IAuthenticationRepository {
   AuthenticationRepository({
     required IAuthenticationService authenticationService,
-  }) : _authenticationService = authenticationService;
+  }) : _authenticationService = authenticationService {
+    // Usuari inicial "anònim"
+    _currentUser = Future.value(
+      User(username: '', authenticated: false),
+    );
+  }
 
   final IAuthenticationService _authenticationService;
 
-  late var _currentUser = _authenticationService.validateLogin('','');
-
+  late Future<User> _currentUser;
 
   @override
   Future<User> get current => _currentUser;
 
   @override
   Future<User> validateLogin(String username, String password) {
-    return _authenticationService.validateLogin(username, password);
+    final futureUser =
+        _authenticationService.validateLogin(username, password);
+      // s'actualitza l'usuari a l'actual
+    _currentUser = futureUser; 
+    return futureUser;
   }
 }
+
