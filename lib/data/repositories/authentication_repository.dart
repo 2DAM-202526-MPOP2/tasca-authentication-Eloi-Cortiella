@@ -12,7 +12,7 @@ class AuthenticationRepository implements IAuthenticationRepository {
   }) : _authenticationService = authenticationService {
     // Usuari inicial "anònim"
     _currentUser = Future.value(
-      User(username: '', authenticated: false),
+      User(username: '', authenticated: false, id: 0, email: '', accessToken: ''),
     );
   }
 
