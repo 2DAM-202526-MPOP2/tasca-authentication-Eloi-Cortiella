@@ -4,6 +4,7 @@ import 'package:first_flutter/data/repositories/sentence_repository.dart';
 import 'package:first_flutter/data/services/authentication_service.dart';
 import 'package:first_flutter/data/services/sentence_service.dart';
 import 'package:first_flutter/presentation/viewmodels/login_vm.dart';
+import 'package:first_flutter/presentation/viewmodels/profile_vm.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -22,7 +23,8 @@ void main() {
           ), //ISentenceRepository instance
         ),
         Provider<IAuthenticationService>(
-          create: (context) => AuthenticationService(), // IAuthenticationService instance
+          create: (context) =>
+              AuthenticationService(), // IAuthenticationService instance
         ),
         Provider<IAuthenticationRepository>(
           create: (context) => AuthenticationRepository(
@@ -43,15 +45,17 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (context) =>
-              SentenceVM(sentenceRepository: context.read()),
+          create: (context) => SentenceVM(sentenceRepository: context.read()),
         ),
         ChangeNotifierProvider(
-          create: (context) =>
-              LoginVM(
-                authenticationRepository:
-                    context.read<IAuthenticationRepository>(),
-              ),
+          create: (context) => LoginVM(
+            authenticationRepository: context.read<IAuthenticationRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ProfileVM(
+            authenticationRepository: context.read<IAuthenticationRepository>(),
+          ),
         ),
       ],
       child: MaterialApp(
@@ -83,6 +87,8 @@ class _MyHomePageState extends State<MyHomePage> {
         page = FavoritesPage();
       case 2:
         page = LoginPage();
+      case 3:
+        page = ProfilePage();
       default:
         throw UnimplementedError('no widget for $selectedIndex');
     }
@@ -94,16 +100,15 @@ class _MyHomePageState extends State<MyHomePage> {
             body: Row(children: [MainArea(page: page)]),
             bottomNavigationBar: NavigationBar(
               destinations: [
-                NavigationDestination(
-                  icon: Icon(Icons.home), 
-                  label: 'Home'),
+                NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
                 NavigationDestination(
                   icon: Icon(Icons.favorite),
                   label: 'Favorites',
                 ),
+                NavigationDestination(icon: Icon(Icons.login), label: 'Login'),
                 NavigationDestination(
-                  icon: Icon(Icons.login),
-                  label: 'Login',
+                  icon: Icon(Icons.person),
+                  label: 'Profile',
                 ),
               ],
               selectedIndex: selectedIndex,
@@ -133,6 +138,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       NavigationRailDestination(
                         icon: Icon(Icons.login),
                         label: Text('Login'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.person),
+                        label: Text('Profile'),
                       ),
                     ],
                     selectedIndex: selectedIndex,
@@ -296,8 +305,9 @@ class LoginPage extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Enter username',
                   enabledBorder: UnderlineInputBorder(
-                    borderSide:
-                        BorderSide(color: Theme.of(context).dividerColor),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                    ),
                   ),
                 ),
               ),
@@ -307,8 +317,9 @@ class LoginPage extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Enter password',
                   enabledBorder: UnderlineInputBorder(
-                    borderSide:
-                        BorderSide(color: Theme.of(context).dividerColor),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                    ),
                   ),
                 ),
               ),
@@ -329,8 +340,10 @@ class LoginPage extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
                 child: const Text('Login'),
               ),
@@ -376,6 +389,89 @@ class BigCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Text(pair.text, style: style),
+      ),
+    );
+  }
+}
+
+class ProfilePage extends StatefulWidget {
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final loginVM = context.read<LoginVM>();
+        if (loginVM.currentUser.authenticated) {
+          context.read<ProfileVM>().loadProfile(loginVM.currentUser);
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loginVM = context.watch<LoginVM>();
+    final profileVM = context.watch<ProfileVM>();
+
+    if (!loginVM.currentUser.authenticated) {
+      return Center(child: Text('Please login to view your profile.'));
+    }
+
+    if (profileVM.isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (profileVM.errorMessage != null) {
+      return Center(
+        child: Text(
+          'Error loading profile: ${profileVM.errorMessage}',
+          style: TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    final profile = profileVM.profile;
+    if (profile == null) {
+      return Center(child: Text('No profile data available.'));
+    }
+
+    return Center(
+      child: Card(
+        margin: const EdgeInsets.all(20),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 50,
+                child: Text(
+                  profile.firstname.isNotEmpty
+                      ? profile.firstname[0].toUpperCase() +
+                            profile.lastname[0].toUpperCase()
+                      : '?',
+                  style: Theme.of(context).textTheme.headlineLarge,
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                '${profile.firstname} ${profile.lastname}',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              SizedBox(height: 10),
+              Text('@${profile.username}'),
+              SizedBox(height: 10),
+              Text(profile.email),
+              SizedBox(height: 10),
+              Text('Born: ${profile.birthdate}'),
+            ],
+          ),
+        ),
       ),
     );
   }
